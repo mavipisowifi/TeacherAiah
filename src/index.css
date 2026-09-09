@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Google Sans (the app's only font) ---------- */
+/* Bundled from src/fonts so it works fully offline in the packaged app. */
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-Italic.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-Medium.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-MediumItalic.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-SemiBold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-SemiBoldItalic.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-Bold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/GoogleSans-BoldItalic.ttf') format('truetype');
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f1f5f4;
+  color: #0f172a;
+  font-family: 'Google Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Native color inputs: remove chrome so swatches read as solid tiles. */
+input[type='color'] {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: none;
+}
+input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type='color']::-webkit-color-swatch {
+  border: 1px solid rgba(15, 23, 42, 0.25);
+  border-radius: 6px;
+}
+
+/* Thin, calm scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #a7b0ad transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #b8c2be;
+  border-radius: 6px;
+}
+
+/* ---------- Print / PDF ---------- */
+/* Force background colors to print (Chromium/Electron). */
+* {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+  html,
+  body,
+  #root {
+    height: auto;
+    background: #ffffff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+  }
+  .page-break {
+    break-after: page;
+    page-break-after: always;
+  }
+  .page-break:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

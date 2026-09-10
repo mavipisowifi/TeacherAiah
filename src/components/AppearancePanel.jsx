@@ -3,6 +3,10 @@ import { useStore, THEMES, THEME_FIELDS, effectiveTheme, pickTextColor } from '.
 import { useUI } from '../appContext.jsx'
 import { Button, Card, Icon } from './ui.jsx'
 import { PageHeader } from './TeachersPanel.jsx'
+import logoUrl from '../assets/logo.png'
+
+// App version, injected from package.json at build time (see vite.config.mjs).
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
 
 function MiniPreview({ theme }) {
   const cellBorder = `1px solid ${theme.border}`
@@ -193,6 +197,32 @@ export default function AppearancePanel() {
             </div>
             <p className="mt-3 text-xs text-slate-400">
               Your data is saved on this computer automatically. Use export to back it up or move it to another PC.
+            </p>
+          </Card>
+
+          <Card title="About">
+            <div className="flex items-start gap-3">
+              <img src={logoUrl} alt="TEACHERaiah logo" className="h-12 w-12 shrink-0 rounded-md object-contain" />
+              <div className="min-w-0">
+                <div className="text-base font-extrabold leading-tight tracking-tight text-slate-800">
+                  TEACHER<span className="text-green-600">aiah</span>
+                </div>
+                <div className="mt-0.5 text-xs text-slate-500">Class schedule maker · Version {APP_VERSION}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 text-sm text-slate-600">
+              <span className="font-semibold text-slate-700">Developer:</span> Marvin T. Bangcailan
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <a className="font-medium text-green-700 hover:underline" href="https://github.com/mavipisowifi/TeacherAiah" target="_blank" rel="noreferrer">GitHub repository</a>
+              <a className="font-medium text-green-700 hover:underline" href="https://github.com/mavipisowifi" target="_blank" rel="noreferrer">GitHub</a>
+              <a className="font-medium text-green-700 hover:underline" href="https://www.linkedin.com/in/marvin-bangcailan-a519582ab/" target="_blank" rel="noreferrer">LinkedIn</a>
+            </div>
+
+            <p className="mt-4 rounded-md border border-green-100 bg-green-50 px-3 py-2.5 text-xs leading-relaxed text-green-900">
+              <span className="font-semibold">Free for all teachers all over the Philippines.</span> Built to lighten your load so you can focus on what matters most — your students. <span className="italic">Salamat sa inyong walang sawang paglilingkod!</span>
             </p>
           </Card>
         </div>

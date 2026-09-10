@@ -2,7 +2,7 @@
   "name": "teacheraiah",
   "version": "1.0.0",
   "description": "TEACHERaiah — an automated class schedule maker for teachers on every campus (Kindergarten to Senior High). Build color-coded weekly class programs, auto-generate individual teacher schedules, detect conflicts, and export to PDF.",
-  "author": "BCC",
+  "author": "Marvin T. Bangcailan",
   "license": "MIT",
   "private": true,
   "main": "electron/main.js",

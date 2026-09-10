@@ -96,7 +96,7 @@ The workflow follows the tabs top to bottom. **Create your subjects first, then 
    - A banner appears if some sessions couldn't be placed conflict‑free (it tells you how many and how to fix it), or if a teacher is unavoidably double‑booked — even against a classroom in another room or grade.
    - Toggle **Show teacher names** to include the teacher in each cell, then click **Preview / Print** to print or save the classroom's schedule as PDF.
 6. **Teacher Schedules tab** — view or print each teacher's auto‑generated personal program (gathered from every grade they teach in). When your school runs Senior High semesters, a **1st / 2nd Semester** switch shows each teacher's program for the chosen term.
-7. **Appearance & Data tab** — choose a color scheme, customize colors, and export/import/reset your data.
+7. **Appearance & Data tab** — choose a color scheme, customize colors, and export/import/reset your data. The **About** card here shows the app version and developer info.
 
 ### Printing tips
 
@@ -149,6 +149,20 @@ class-schedule-maker/
 - **`npm install` fails or is slow** — check your internet connection; the Electron binary is downloaded on first install. Corporate networks/proxies can block it.
 - **The window is blank in `npm run dev`** — make sure nothing else is using port `5173`, then re‑run `npm run dev`.
 - **Colors don't show when printing** — enable *Background graphics* in the print dialog (the app requests this automatically for PDF export).
+
+---
+
+## Developer
+
+**TEACHERaiah** is developed by **Marvin T. Bangcailan**.
+
+- **GitHub repository:** [github.com/mavipisowifi/TeacherAiah](https://github.com/mavipisowifi/TeacherAiah)
+- **GitHub:** [github.com/mavipisowifi](https://github.com/mavipisowifi)
+- **LinkedIn:** [Marvin T. Bangcailan](https://www.linkedin.com/in/marvin-bangcailan-a519582ab/)
+
+This program is **free for all teachers all over the Philippines**. It was built to help lighten your load — to take the slow, tedious work of building class programs off your hands so you can pour more of your time and energy into what matters most: your students.
+
+To every teacher out there: your work shapes the future of our nation, one learner at a time. Thank you for your patience, your dedication, and your heart. I hope TEACHERaiah makes your week a little lighter and your schedule-making a whole lot easier — and if it saves you even one late night, it has done its job. *Para sa mga guro — salamat sa inyong walang sawang paglilingkod.*
 
 ---
 

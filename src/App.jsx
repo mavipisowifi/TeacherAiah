@@ -11,6 +11,9 @@ import IndividualPanel from './components/IndividualPanel.jsx'
 import AppearancePanel from './components/AppearancePanel.jsx'
 import PrintPortal from './components/PrintPortal.jsx'
 
+// App version, injected from package.json at build time (see vite.config.mjs).
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
+
 const TABS = [
   { key: 'subjects', label: 'Subjects', icon: 'book' },
   { key: 'teachers', label: 'Subject Teachers', icon: 'users' },
@@ -112,6 +115,9 @@ export default function App() {
                 <span>No teacher conflicts.</span>
               </div>
             )}
+            <div className="mt-2 text-center text-[10px] font-medium tracking-wide text-slate-400">
+              TEACHERaiah v{APP_VERSION}
+            </div>
           </div>
         </aside>
 

@@ -351,8 +351,8 @@ function RoomDetail({ room, onBack }) {
 
   const conflicts = useMemo(() => computeConflicts(state.schedules), [state.schedules])
   const moderators = useMemo(() => state.teachers.filter((t) => t.role === 'Moderator'), [state.teachers])
-  // Senior High rooms carry strands + two semesters; every other grade keeps the
-  // simpler grade-wide model.
+  // Senior High rooms carry strands + per-term subjects; every other grade keeps
+  // the simpler grade-wide model (same subjects every term).
   const isShs = isShsGrade(room.gradeLevel)
   const gradeSubjects = useMemo(
     () => subjectsForGrade(state.subjects, room.gradeLevel).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })),
@@ -371,14 +371,14 @@ function RoomDetail({ room, onBack }) {
   const visibleIds = useMemo(() => classrooms.map((s) => s.id), [classrooms])
 
   // The subjects one SHS section actually studies — its strand's subjects plus
-  // Core, across BOTH semesters (deduped). For a non-SHS grade this is just the
+  // Core, across all three terms (deduped). For a non-SHS grade this is just the
   // grade's subjects, so the gate below is unchanged.
   const sectionSubjects = (s) => {
     if (!isShs) return gradeSubjects
     const sid = s.strandId || ''
     const seen = new Set()
     const out = []
-    for (const sem of ['1', '2']) {
+    for (const sem of ['1', '2', '3']) {
       for (const subj of subjectsForClass(state.subjects, room.gradeLevel, sid, sem)) {
         if (!seen.has(subj.id)) { seen.add(subj.id); out.push(subj) }
       }
@@ -386,13 +386,13 @@ function RoomDetail({ room, onBack }) {
     return out
   }
   // The subjects a section takes that still have no teacher — the strict gate.
-  // Scoped to the section's strand + both semesters for SHS.
+  // Scoped to the section's strand + all three terms for SHS.
   const sectionMissing = (s) => {
     if (!isShs) return subjectsMissingTeacher(state.subjects, state.teachers, room.gradeLevel)
     const sid = s.strandId || ''
     const seen = new Set()
     const out = []
-    for (const sem of ['1', '2']) {
+    for (const sem of ['1', '2', '3']) {
       for (const subj of subjectsMissingTeacherForClass(state.subjects, state.teachers, room.gradeLevel, sid, sem)) {
         if (!seen.has(subj.id)) { seen.add(subj.id); out.push(subj) }
       }
@@ -411,7 +411,7 @@ function RoomDetail({ room, onBack }) {
     const seen = new Set()
     const out = []
     for (const sid of strands) {
-      for (const sem of ['1', '2']) {
+      for (const sem of ['1', '2', '3']) {
         for (const subj of subjectsMissingTeacherForClass(state.subjects, state.teachers, room.gradeLevel, sid, sem)) {
           if (!seen.has(subj.id)) { seen.add(subj.id); out.push(subj) }
         }
@@ -422,7 +422,7 @@ function RoomDetail({ room, onBack }) {
   const missingTeacher = missing.length
   const missingIds = useMemo(() => new Set(missing.map((s) => s.id)), [missing])
   // Can every section in this room be generated? Non-SHS: subjects exist and all
-  // have teachers. SHS: every existing section passes its own strand/semester gate.
+  // have teachers. SHS: every existing section passes its own strand/term gate.
   const canGenerate = isShs
     ? classrooms.length > 0 && classrooms.every(sectionCanGenerate)
     : gradeSubjects.length > 0 && missingTeacher === 0
@@ -571,7 +571,9 @@ function RoomDetail({ room, onBack }) {
     }
     let msg = `Generated ${res.placed} of ${res.requested} session${res.requested === 1 ? '' : 's'} for ${s.section || 'section'}`
     const notes = []
-    if (isShs) notes.push('1st + 2nd semester')
+    // Every grade now builds a separate timetable for all three terms, so the
+    // session count is the sum across Term 1 + 2 + 3 — say so to avoid surprise.
+    notes.push('all 3 terms')
     if (res.unplaced) notes.push(`${res.unplaced} couldn't fit conflict-free`)
     if (res.missingTeacher) notes.push(`${res.missingTeacher} without a teacher`)
     if (notes.length) msg += ` · ${notes.join(' · ')}`
@@ -798,11 +800,9 @@ function RoomDetail({ room, onBack }) {
                   </div>
                   <Badge tone={count > 0 ? 'green' : 'slate'}>{count > 0 ? `${count} assigned` : 'Not generated'}</Badge>
                 </div>
-                {isShs ? (
-                  <div className="border-b border-slate-100 px-4 py-1.5 text-[11px] text-slate-400">
-                    1st + 2nd semester programs
-                  </div>
-                ) : null}
+                <div className="border-b border-slate-100 px-4 py-1.5 text-[11px] text-slate-400">
+                  Three-term programs (Term 1 · 2 · 3)
+                </div>
                 <div className="mt-auto flex flex-wrap items-center gap-1 border-t border-slate-100 px-3 py-2">
                   {hasConflict && (
                     <Button variant="warn" size="sm" icon="check" onClick={handleFixConflicts} title="Auto-fix teacher clashes in this room">
@@ -852,12 +852,12 @@ function RoomDetail({ room, onBack }) {
           </Field>
 
           {/* Strand — Senior High only. It decides which strand-specific subjects
-              (on top of Core) this section studies, in both semesters. */}
+              (on top of Core) this section studies, across all three terms. */}
           {isShs && (
             <Field
               label="Strand"
               required
-              hint="This section studies its strand's subjects plus every Core subject. Each semester is built separately."
+              hint="This section studies its strand's subjects plus every Core subject. Each term is built separately."
             >
               <Select value={classForm.strandId} onChange={(e) => setClassForm({ ...classForm, strandId: e.target.value })}>
                 <option value="">— Choose a strand —</option>

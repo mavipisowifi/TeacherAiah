@@ -3,10 +3,8 @@ import {
   useStore,
   computeConflicts,
   formatTeacherName,
-  subjectsForGrade,
   subjectsForClass,
   subjectsForSection,
-  subjectsMissingTeacher,
   subjectsMissingTeacherForClass,
   teachersForSubject,
   sectionRotation,
@@ -45,8 +43,9 @@ import ScheduleTable from './ScheduleTable.jsx'
 export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
   const { state, generateSchedule, resolveConflicts, setSetting, setEntriesBulk, clearGrid } = useStore()
   const { openPrint, showToast } = useUI()
-  // Which semester's program is on screen (Senior High only). Non-SHS sections
-  // ignore this and keep their single all-year grid.
+  // Which term's program is on screen ('1'/'2'/'3'). Every grade now keeps a
+  // separate timetable per term (DepEd trimester), so this applies to all grades,
+  // not just Senior High.
   const [semester, setSemester] = useState('1')
   // The cell currently open in the manual editor, or null. { slotId, day }.
   const [editing, setEditing] = useState(null)
@@ -71,9 +70,10 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
 
   const grade = schedule.gradeLevel
   const isShs = isShsGrade(grade)
-  const activeSem = isShs ? semester : ''
-  // The single program (timeSlots + grid) shown for the active semester. For a
-  // non-SHS section this is just the section's own grid (all-year part).
+  // Every grade now keeps three term programs, so the active term applies to all
+  // grades (K–10 included). `isShs` still gates only the STRAND concept below.
+  const activeSem = semester
+  // The single program (timeSlots + grid) shown for the active term.
   const prog = programForSemester(schedule, activeSem)
   const semSchedule = {
     id: schedule.id,
@@ -83,21 +83,18 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
     timeSlots: prog.timeSlots,
     grid: prog.grid,
   }
-  // Subjects + missing-teacher gate are scoped to the section's strand + the
-  // active semester for SHS; grade-wide for everything else.
-  const sectionSubjects = isShs
-    ? subjectsForClass(state.subjects, grade, schedule.strandId || '', activeSem)
-    : subjectsForGrade(state.subjects, grade)
-  const missing = isShs
-    ? subjectsMissingTeacherForClass(state.subjects, state.teachers, grade, schedule.strandId || '', activeSem)
-    : subjectsMissingTeacher(state.subjects, state.teachers, grade)
+  // Subjects + missing-teacher gate are scoped to the active term for EVERY
+  // grade, plus the section's strand for Senior High (strandId is '' otherwise,
+  // which subjectsForClass ignores for non-SHS grades).
+  const sectionSubjects = subjectsForClass(state.subjects, grade, schedule.strandId || '', activeSem)
+  const missing = subjectsMissingTeacherForClass(state.subjects, state.teachers, grade, schedule.strandId || '', activeSem)
   const missingTeacher = missing.length
   const canGenerate = sectionSubjects.length > 0 && missingTeacher === 0
   const count = assignedCount(semSchedule)
   const isGenerated = count > 0
   const adviser = schedule.moderatorId ? teachersById[schedule.moderatorId] : null
   const myConflicts = conflicts.conflicts.filter(
-    (group) => group.some((it) => it.scheduleId === scheduleId && (!isShs || !it.semester || it.semester === activeSem))
+    (group) => group.some((it) => it.scheduleId === scheduleId && (!it.semester || it.semester === activeSem))
   )
 
   // Sessions that couldn't be placed conflict-free: for each subject this grade
@@ -114,8 +111,8 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
       // per-week count. Keeping this in lockstep with autoScheduleGrid stops a
       // correctly-filled monthly subject from tripping the "unfilled" banner.
       const want = subjectCadence(s) === 'month' ? 1 : clampFreq(s.periodsPerWeek)
-      // usageCount over the active semester's program only (semSchedule holds
-      // that single grid), so a subject taught in the other term isn't counted.
+      // usageCount over the active term's program only (semSchedule holds that
+      // single grid), so a subject taught in another term isn't counted.
       const got = usageCount(s.id, [semSchedule])
       if (got < want) miss += want - got
     }
@@ -127,16 +124,15 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
   // subject this section gets by default, matching what Generate would pick.
   const rotation = useMemo(() => sectionRotation(state.schedules, scheduleId), [state.schedules, scheduleId])
   // The subjects this section can place by hand, each pre-resolved to one teacher
-  // (the rotation pick). SHS is scoped to the section's strand + active semester.
+  // (the rotation pick). Scoped to the active term for every grade, plus the
+  // section's strand for Senior High.
   const placeable = useMemo(
     () =>
-      isShs
-        ? subjectsForSection(state.subjects, state.teachers, grade, rotation, {
-            strandId: schedule.strandId || '',
-            semester: activeSem,
-          })
-        : subjectsForSection(state.subjects, state.teachers, grade, rotation),
-    [state.subjects, state.teachers, grade, rotation, isShs, schedule.strandId, activeSem]
+      subjectsForSection(state.subjects, state.teachers, grade, rotation, {
+        strandId: schedule.strandId || '',
+        semester: activeSem,
+      }),
+    [state.subjects, state.teachers, grade, rotation, schedule.strandId, activeSem]
   )
   // Friday reserved rows (activity / early dismissal) for this program's times,
   // so the editor can lock the Friday column on exactly those rows.
@@ -149,8 +145,8 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
   const editCell = editing ? (prog.grid[editing.slotId] || {})[editing.day] || null : null
   const editFriReserved = !!(editing && fri && (fri.activity[editing.slotId] || fri.dismissed[editing.slotId]))
 
-  // Add / change / remove one or more cells in the active program. Semester-aware
-  // so a Senior High edit lands in the right term and leaves the other untouched.
+  // Add / change / remove one or more cells in the active program. Term-aware so
+  // an edit lands in the selected term's program and leaves the other terms alone.
   function applyCell(days, value) {
     if (!editing || !days.length) return
     setEntriesBulk(scheduleId, editing.slotId, days, value, activeSem)
@@ -158,14 +154,14 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
     showToast(value ? 'Subject placed' : 'Cell cleared')
   }
 
-  // Wipe every placed subject from the table (the active semester's program for
-  // an SHS section). Time rows and bands stay; the view falls back to its empty
-  // state so the user can Generate again or rebuild by hand.
+  // Wipe every placed subject from the table (the active term's program). Time
+  // rows and bands stay; the view falls back to its empty state so the user can
+  // Generate again or rebuild by hand.
   function handleClearAll() {
     clearGrid(scheduleId, activeSem)
     setConfirmClear(false)
     setEditing(null)
-    showToast(isShs ? `Cleared all subjects · ${semesterLabel(activeSem)}` : 'Cleared all subjects')
+    showToast(`Cleared all subjects · ${semesterLabel(activeSem)}`)
   }
 
   function handleGenerate() {
@@ -227,22 +223,20 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
           </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {/* Semester switch — Senior High only. Each semester is its own program. */}
-          {isShs && (
-            <div className="inline-flex overflow-hidden rounded-md border border-slate-300">
-              {SEMESTERS.map((sem) => (
-                <button
-                  key={sem.id}
-                  onClick={() => setSemester(sem.id)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    semester === sem.id ? 'bg-green-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {sem.short}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Term switch — every grade keeps a separate program per term. */}
+          <div className="inline-flex overflow-hidden rounded-md border border-slate-300">
+            {SEMESTERS.map((sem) => (
+              <button
+                key={sem.id}
+                onClick={() => setSemester(sem.id)}
+                className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  semester === sem.id ? 'bg-green-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {sem.short}
+              </button>
+            ))}
+          </div>
           <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
             <input
               type="checkbox"
@@ -332,7 +326,7 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
           <Icon name="calendar" className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
           {sectionSubjects.length === 0 ? (
             <span>
-              No subjects for {grade}{isShs ? ' in this strand/semester' : ''} yet. Add them in the{' '}
+              No subjects for {grade}{isShs ? ' in this strand/term' : ''} yet. Add them in the{' '}
               <strong>Subjects</strong> tab (then link a teacher in <strong>Subject Teachers</strong>) — after that you can
               auto-generate or place them by hand here.
             </span>
@@ -349,7 +343,13 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
 
       <div>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-3">
-          <ScheduleTable schedule={schedule} semester={activeSem} editable onEditCell={(slotId, day) => setEditing({ slotId, day })} />
+          <ScheduleTable
+            schedule={schedule}
+            semester={activeSem}
+            editable
+            onEditCell={(slotId, day) => setEditing({ slotId, day })}
+            conflictCells={conflicts.cellKeys}
+          />
         </div>
         <p className="mt-2 text-xs text-slate-400">
           Click any period cell to add, change, or remove a subject by hand. <strong>Generate</strong> fills the whole week
@@ -366,7 +366,7 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
           onClose={() => setEditing(null)}
           grade={grade}
           section={schedule.section}
-          semLabel={isShs ? semesterLabel(activeSem) : ''}
+          semLabel={semesterLabel(activeSem)}
           day={editing.day}
           time={editSlot.time}
           currentCell={editCell}
@@ -377,7 +377,7 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
         />
       )}
 
-      {/* Confirm clearing the whole table (the active semester's program for SHS) */}
+      {/* Confirm clearing the whole table (the active term's program) */}
       {confirmClear && (
         <Modal
           open
@@ -392,20 +392,11 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
           }
         >
           <p className="text-sm text-slate-600">
-            This removes {count === 1 ? 'the 1 placed subject' : `all ${count} placed subjects`} from{' '}
-            {isShs ? (
-              <>
-                the <strong>{semesterLabel(activeSem)}</strong> table
-              </>
-            ) : (
-              "this classroom's table"
-            )}
-            . The time rows and the Homeroom / Recess / Lunch / Dismissal bands stay, so you can{' '}
-            <strong>Generate</strong> again or rebuild it by hand.
+            This removes {count === 1 ? 'the 1 placed subject' : `all ${count} placed subjects`} from the{' '}
+            <strong>{semesterLabel(activeSem)}</strong> table. The time rows and the Homeroom / Recess / Lunch /
+            Dismissal bands stay, so you can <strong>Generate</strong> again or rebuild it by hand.
           </p>
-          {isShs && (
-            <p className="mt-2 text-sm text-slate-500">The other semester's program is left untouched.</p>
-          )}
+          <p className="mt-2 text-sm text-slate-500">The other terms' programs are left untouched.</p>
           <p className="mt-2 text-xs text-slate-400">This can't be undone.</p>
         </Modal>
       )}

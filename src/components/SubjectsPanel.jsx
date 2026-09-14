@@ -85,7 +85,7 @@ export default function SubjectsPanel() {
       sessionsPerMonth: clampMonthly(s.sessionsPerMonth),
       color: s.color || SUBJECT_PALETTE[0],
       strandId: s.strandId || '',
-      semester: s.semester === '1' || s.semester === '2' ? s.semester : '',
+      semester: s.semester === '1' || s.semester === '2' || s.semester === '3' ? s.semester : '',
     })
     setError('')
     setModalOpen(true)
@@ -104,6 +104,7 @@ export default function SubjectsPanel() {
     if (dup) return setError(`${form.gradeLevel} already has a subject named "${name}".`)
 
     const shs = isShsGrade(form.gradeLevel)
+    const validTerm = form.semester === '1' || form.semester === '2' || form.semester === '3'
     const payload = {
       name,
       code: form.code.trim(),
@@ -112,10 +113,10 @@ export default function SubjectsPanel() {
       periodsPerWeek: clampFreq(form.periodsPerWeek),
       sessionsPerMonth: clampMonthly(form.sessionsPerMonth),
       color: form.color,
-      // Strand + semester only apply to Senior High; a non-SHS grade always
-      // stores them blank so it behaves exactly as before.
+      // Strand is Senior High only; the term applies to every grade (blank runs
+      // in all three terms, so existing subjects keep repeating each term).
       strandId: shs ? form.strandId || '' : '',
-      semester: shs && (form.semester === '1' || form.semester === '2') ? form.semester : '',
+      semester: validTerm ? form.semester : '',
     }
     if (editing) {
       updateSubject(editing.id, payload)
@@ -241,14 +242,13 @@ export default function SubjectsPanel() {
                   {grp.subjects.map((s) => {
                     const teachers = teachersForSubject(state.teachers, s.id)
                     const shs = isShsGrade(s.gradeLevel)
-                    // Breadcrumb parts, top line: code / strand / semester —
-                    // only the pieces that apply to this subject.
+                    // Breadcrumb parts, top line: code / strand / term —
+                    // only the pieces that apply to this subject. Strand is
+                    // Senior High only; the term shows for any grade that pins one.
                     const crumbs = []
                     if (s.code) crumbs.push({ text: s.code })
-                    if (shs) {
-                      crumbs.push({ text: strandLabel(s.strandId), strong: !isCrossStrand(s.strandId) })
-                      if (s.semester) crumbs.push({ text: semesterLabel(s.semester) })
-                    }
+                    if (shs) crumbs.push({ text: strandLabel(s.strandId), strong: !isCrossStrand(s.strandId) })
+                    if (s.semester) crumbs.push({ text: semesterLabel(s.semester) })
                     return (
                       <div
                         key={s.id}
@@ -394,17 +394,18 @@ export default function SubjectsPanel() {
               </div>
             </Field>
           </div>
-          {/* Strand + semester — Senior High only. Everything else keeps the
-              simpler grade-wide model. */}
-          {isShsGrade(form.gradeLevel) && (
-            <div className="grid grid-cols-2 gap-4">
+          {/* Term applies to every grade (blank = all three terms). Strand is
+              Senior High only, shown alongside Term for SHS grades. */}
+          <div className="grid grid-cols-2 gap-4">
+            {isShsGrade(form.gradeLevel) && (
               <Field
                 label="Strand"
-                hint="Core and Applied are taken by every strand; a specific strand limits it to that section."
+                hint="Core, Applied and Elective are taken by every strand; a specific strand limits it to that section."
               >
                 <Select value={form.strandId} onChange={(e) => setForm({ ...form, strandId: e.target.value })}>
                   <option value="">Core (all strands)</option>
                   <option value="applied">Applied (all strands)</option>
+                  <option value="elective">Elective (all strands)</option>
                   {strandOptionGroups().map((grp) => (
                     <optgroup key={grp.label} label={grp.label}>
                       {grp.strands.map((st) => (
@@ -414,16 +415,16 @@ export default function SubjectsPanel() {
                   ))}
                 </Select>
               </Field>
-              <Field label="Semester" hint="Senior High runs two terms with different subjects.">
-                <Select value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })}>
-                  <option value="">Both semesters</option>
-                  {SEMESTERS.map((sem) => (
-                    <option key={sem.id} value={sem.id}>{sem.name}</option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-          )}
+            )}
+            <Field label="Term" hint="Leave on all terms, or limit this subject to one of the three terms.">
+              <Select value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })}>
+                <option value="">All terms</option>
+                {SEMESTERS.map((sem) => (
+                  <option key={sem.id} value={sem.id}>{sem.name}</option>
+                ))}
+              </Select>
+            </Field>
+          </div>
           <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
             Teachers are linked to subjects in the <strong>Subject Teachers</strong> tab — a teacher can
             teach subjects in any grade, and a subject can be shared by more than one teacher.

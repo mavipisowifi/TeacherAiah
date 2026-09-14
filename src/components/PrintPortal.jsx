@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useStore, formatTeacherName, isShsGrade, semesterLabel } from '../store.jsx'
+import { useStore, useTertiary, formatTeacherName, semesterLabel } from '../store.jsx'
+import { programLabel, termLabel } from '../tertiary.js'
 import { useUI } from '../appContext.jsx'
 import { Icon, Button } from './ui.jsx'
 import ScheduleTable from './ScheduleTable.jsx'
 import IndividualTable from './IndividualTable.jsx'
+import TertiaryScheduleTable from './TertiaryScheduleTable.jsx'
 
 function sanitize(name) {
   return (name || 'schedule')
@@ -15,6 +17,7 @@ function sanitize(name) {
 
 export default function PrintPortal({ target, onClose }) {
   const { state } = useStore()
+  const { state: tState } = useTertiary()
   const { showToast } = useUI()
   const [busy, setBusy] = useState(false)
 
@@ -32,22 +35,20 @@ export default function PrintPortal({ target, onClose }) {
     if (!target) return []
     const sem = target.semester || ''
     if (target.type === 'section') {
-      // One classroom — print the semester currently in view (SHS); K–10 prints
-      // its single all-year grid regardless.
+      // One classroom. A specific term (the builder passes the term in view)
+      // prints just that grid; with no term, print all three term programs.
       const s = state.schedules.find((x) => x.id === target.scheduleId)
       if (!s) return []
-      return [{ key: s.id, node: <ScheduleTable schedule={s} print semester={sem} /> }]
+      const terms = sem ? [sem] : ['1', '2', '3']
+      return terms.map((sm) => ({ key: `${s.id}-${sm}`, node: <ScheduleTable schedule={s} print semester={sm} /> }))
     }
     if (target.type === 'section-all') {
-      // A whole room — print everything: both semester programs for each SHS
-      // section, a single grid for each K–10 section.
+      // A whole room — print all three term programs for every section, K–12.
       return [...state.schedules]
         .filter((s) => (target.roomId ? s.roomId === target.roomId : true))
         .sort((a, b) => (a.gradeLevel + a.section).localeCompare(b.gradeLevel + b.section))
         .flatMap((s) =>
-          isShsGrade(s.gradeLevel)
-            ? ['1', '2'].map((sm) => ({ key: `${s.id}-${sm}`, node: <ScheduleTable schedule={s} print semester={sm} /> }))
-            : [{ key: s.id, node: <ScheduleTable schedule={s} print /> }]
+          ['1', '2', '3'].map((sm) => ({ key: `${s.id}-${sm}`, node: <ScheduleTable schedule={s} print semester={sm} /> }))
         )
     }
     if (target.type === 'individual') {
@@ -58,8 +59,27 @@ export default function PrintPortal({ target, onClose }) {
         .sort((a, b) => formatTeacherName(a).localeCompare(formatTeacherName(b)))
         .map((t) => ({ key: t.id, node: <IndividualTable teacherId={t.id} print semester={sem} /> }))
     }
+    // ----- Tertiary (college / university) -----
+    if (target.type === 'tertiary-block') {
+      const b = tState.blocks.find((x) => x.id === target.blockId)
+      if (!b) return []
+      return [{ key: b.id, node: <TertiaryScheduleTable block={b} term={target.term} print /> }]
+    }
+    if (target.type === 'tertiary-all') {
+      // Every block that has at least one meeting for the requested term, grouped
+      // by program then ordered by block name.
+      const progOrder = Object.fromEntries(tState.programs.map((p, i) => [p.id, i]))
+      return [...tState.blocks]
+        .filter((b) => ((b.schedules[target.term] && b.schedules[target.term].meetings) || []).length > 0)
+        .sort(
+          (a, b) =>
+            (progOrder[a.programId] ?? 999) - (progOrder[b.programId] ?? 999) ||
+            a.name.localeCompare(b.name, undefined, { numeric: true })
+        )
+        .map((b) => ({ key: b.id, node: <TertiaryScheduleTable block={b} term={target.term} print /> }))
+    }
     return []
-  }, [target, state.schedules, state.teachers])
+  }, [target, state.schedules, state.teachers, tState.blocks, tState.programs])
 
   // Title + default file name for the toolbar / save dialog.
   const { title, defaultName } = useMemo(() => {
@@ -92,8 +112,27 @@ export default function PrintPortal({ target, onClose }) {
     if (target.type === 'individual-all') {
       return { title: `All teacher schedules${semTitle}`, defaultName: `all-teacher-schedules${semFile}.pdf` }
     }
+    // ----- Tertiary -----
+    if (target.type === 'tertiary-block') {
+      const b = tState.blocks.find((x) => x.id === target.blockId)
+      const tShort = termLabel(target.term)
+      if (!b) return { title: 'Block schedule', defaultName: 'block-schedule.pdf' }
+      const prog = programLabel(tState.programs, b.programId)
+      const heading = prog ? `${prog} · ${b.name}` : b.name
+      return {
+        title: `${heading}${tShort ? ` · ${tShort}` : ''}`,
+        defaultName: `${sanitize(`${prog}-${b.name}`)}-${sanitize(tShort)}-schedule.pdf`,
+      }
+    }
+    if (target.type === 'tertiary-all') {
+      const tShort = termLabel(target.term)
+      return {
+        title: `All block schedules${tShort ? ` · ${tShort}` : ''}`,
+        defaultName: `all-block-schedules-${sanitize(tShort)}.pdf`,
+      }
+    }
     return { title: 'Print preview', defaultName: 'schedule.pdf' }
-  }, [target, state.schedules, state.teachers, state.rooms])
+  }, [target, state.schedules, state.teachers, state.rooms, tState.blocks, tState.programs])
 
   async function handlePrint() {
     if (busy) return

@@ -9,11 +9,11 @@ export default function IndividualPanel() {
   const { state } = useStore()
   const { openPrint } = useUI()
   const conflicts = useMemo(() => computeConflicts(state.schedules), [state.schedules])
-  // Show a semester switch only when some section actually runs on semesters
-  // (Senior High). A pure K–10 school never sees it and prints all-year grids.
-  const semestered = useMemo(() => hasSemesteredSchedules(state.schedules), [state.schedules])
+  // Every K–12 section now runs on three terms, so the term switch shows whenever
+  // any sections exist (hasSemesteredSchedules is true once a section has terms).
+  const termed = useMemo(() => hasSemesteredSchedules(state.schedules), [state.schedules])
   const [semester, setSemester] = useState('1')
-  const activeSem = semestered ? semester : ''
+  const activeSem = termed ? semester : ''
 
   const teachers = useMemo(
     () => [...state.teachers].sort((a, b) => formatTeacherName(a).localeCompare(formatTeacherName(b))),
@@ -84,8 +84,8 @@ export default function IndividualPanel() {
                   <Badge tone={selected.role === 'Moderator' ? 'green' : 'slate'}>{selected.role}</Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Semester switch — only when the school runs semestered (SHS) sections */}
-                  {semestered && (
+                  {/* Term switch — shows whenever there are sections (every grade runs on terms) */}
+                  {termed && (
                     <div className="inline-flex overflow-hidden rounded-md border border-slate-300">
                       {SEMESTERS.map((sem) => (
                         <button

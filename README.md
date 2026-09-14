@@ -4,6 +4,8 @@
 
 It's made to take the hassle out of schedule‑making for busy teachers — especially in large public schools with many teachers and classrooms.
 
+**Now for colleges and universities, too.** A single switch in the sidebar flips the whole app between **K–12** and **Tertiary** mode. Tertiary mode is a separate scheduling system built for higher education — **programs, courses, faculty, rooms, and block sections** — that schedules on real college **day patterns** (MWF / TTh) across a flexible day window, with **units and lecture/laboratory hours**, up to three **terms** (two semesters plus Summer/Midyear), and full **room booking with clash detection**. The two systems keep their data completely apart (only the app theme, printing, and backups are shared), so your basic‑education schedules and your college schedules never touch. See **[College & University scheduling](#college--university-scheduling-tertiary-mode)** below.
+
 Built with **Electron + React + Tailwind CSS**. All data is saved locally on the PC (no account, no internet needed).
 
 ---
@@ -28,6 +30,32 @@ Built with **Electron + React + Tailwind CSS**. All data is saved locally on the
 - **Print or Save as PDF** — one classroom, all classrooms in a room, one teacher, or all teachers. For Senior High, you print the semester you're viewing, and **all classrooms in a room** prints both semesters of every section.
 - **Tidy up in bulk.** The **Subjects**, **Subject Teachers**, and **Grade Level Rooms** lists each have a **Select** mode and a **Clear all** button. Press **Select** to tick several items with checkboxes (with **Select all / none**) and delete them together, or **Clear all** to remove every item in the list at once — each asks you to confirm first and tells you exactly how many will go. The deletes clean up after themselves: removing a **subject** also unlinks it from every teacher and clears it from any generated grid; removing a **teacher** unassigns them from every schedule and advisory role (the subjects they taught stay); removing a **Grade Level Room** also deletes all the classrooms inside it. Inside a room, the **Classrooms (Sections)** list has the same **Select** / **Clear all** for deleting whole sections (the room itself stays) — not to be confused with an open classroom's own **Clear all**, which just empties that one section's timetable. Global subjects are never touched by deleting rooms or classrooms.
 - **Local save + backup** — everything is stored on the computer automatically. Export a `.json` backup and import it on another PC. Backups from earlier versions are upgraded automatically on import.
+
+---
+
+## College & University scheduling (Tertiary mode)
+
+Switch the sidebar toggle from **K–12** to **Tertiary** and the app becomes a scheduler for higher education. It works the way a college registrar thinks: you build **block sections** (a cohort like *BSIT 1‑A* that takes a set of courses together — the tertiary equivalent of a K–12 class), and the app lays each course onto the week as one or more **meetings** on the day patterns colleges actually use. Everything here lives in its own separate store, kept completely apart from your K–12 data; only the app theme, printing, and backups are shared.
+
+The setup follows its own tabs, left to right:
+
+- **Programs.** Each degree program (e.g. *BSIT*, *BSED*) with a code, name, and number of year levels.
+- **Courses.** Course **code & title**, its **program**, **year level**, and **term**, plus **units** and **lecture / laboratory hours**. The lec/lab hours drive how the course is placed: lecture hours become the familiar MWF / TTh blocks, and lab hours meet as one longer session in a laboratory room.
+- **Faculty.** Instructors and the **courses they can teach** — a course can be shared by several instructors, and the generator spreads the load across them (round‑robin, respecting an optional **max‑hours** cap). A faculty member can also be a block's **adviser**.
+- **Rooms.** **Lecture** rooms and **Laboratories**. The generator keeps labs in lab rooms and lectures in lecture rooms, and never double‑books a room. (If you add no rooms of a type, those sessions are simply placed unroomed.)
+- **Block Sections.** Group a program + year level into blocks (e.g. *BSIT 1‑A*, *1‑B*). Each block carries its own timetable **per term**.
+
+**Terms.** Every block keeps a separate timetable for **1st Semester**, **2nd Semester**, and **Summer / Midyear**. A term switch on the Schedules tab lets you build, view, and print each one on its own; a course only appears in the term you assigned it.
+
+**Day patterns & the day window.** Instead of a fixed daily bell of equal periods, tertiary courses meet on patterns — **MWF**, **TTh**, **MW**, **TF**, **Daily**, or **Saturday** — with session lengths derived from each course's hours (e.g. a 3‑unit/3‑hour lecture becomes three 1‑hour MWF sessions; a 2‑hour lecture becomes 1‑hour TTh). Classes are placed inside a configurable **day window** (default **7:00 AM – 8:00 PM**) at a 30‑minute granularity. Colleges commonly run Monday–Saturday, so Saturday is available and appears the moment a meeting is placed there.
+
+**One‑click generation.** On the **Schedules** tab, press **Generate** for the selected block or **Generate all** to build every block for the term at once. The placer schedules the heaviest courses first, assigns the least‑loaded eligible instructor, and drops each session into the day window **without ever double‑booking the block cohort, a shared instructor, or a room**. When several blocks are generated together they're threaded so the whole batch is mutually clash‑free. If some sessions can't be fit, the app tells you exactly how many.
+
+**Hand‑edit any meeting.** The weekly grid is fully editable. Click an empty part of a day column to **add** a meeting (choose the course, instructor, room, day, and start/end time), or click any meeting to **change or remove** it. Overlapping meetings render side by side. **Generate**/**Generate all** rebuild the term and replace manual edits; **Clear** empties just the selected block's term.
+
+**Faculty loads & clash detection, live.** A right‑hand panel shows each instructor's **total scheduled hours** for the term (flagged red when over their cap) and a running list of **conflicts** — the same faculty booked twice, a room booked twice, or a block overlapping itself — updated as you generate or edit.
+
+**Print or Save as PDF.** Print one block's timetable (the **print** button on the Schedules tab) or **Print all** to print every block that has meetings for the current term. Because a college block meets at different times on different days, the printed timetable is a **merged time‑slot grid**: a shared time column down the left with each course painted as a single color‑filled cell spanning its exact minutes, under a header showing the program, block, year level, term, and adviser. It shares the same color theme and A4‑landscape output as the K–12 schedules.
 
 ---
 
@@ -84,6 +112,8 @@ npm run dist:portable
 
 ## How to use
 
+> **Scheduling for a college or university instead?** Flip the sidebar switch to **Tertiary** and follow the [College & University scheduling](#college--university-scheduling-tertiary-mode) workflow above. The steps below are for **K–12** (basic education).
+
 The workflow follows the tabs top to bottom. **Create your subjects first, then your teachers** — then scheduling is a single click.
 
 1. **Subjects tab** — click **Add subject** and fill in **Subject Name**, **Subject Code** *(optional)*, **Grade Level**, and how often it meets — **per week** (default 4 days) for regular subjects, or **per month** (1–4 times) for ones that only run a few times a month — then pick a color. You don't assign a teacher here. Subjects link to every classroom of their grade and are grouped and sorted by grade level within their campus category. **For Grade 11–12 subjects, also choose a Strand** (or *Core* / *Applied* for one every strand takes) **and a Semester** (or *Both semesters*). To prune the list, use **Select** to tick several subjects and delete them together, or **Clear all** to remove every subject at once.
@@ -120,9 +150,10 @@ class-schedule-maker/
 │  ├─ main.js         # Electron main process (window, PDF export, print)
 │  └─ preload.js      # Secure bridge → window.scheduleAPI
 ├─ src/
-│  ├─ store.jsx       # App state, business logic, conflict detection, themes
-│  ├─ App.jsx         # Shell + tab navigation
-│  ├─ components/     # Panels, tables, print portal, UI kit
+│  ├─ store.jsx       # Dual-mode state: K–12 + tertiary slices, business logic, conflicts, themes
+│  ├─ tertiary.js     # Tertiary domain (pure): model, scheduling engine, reducer, selectors
+│  ├─ App.jsx         # Shell + K–12 ⇄ Tertiary mode switch + tab navigation
+│  ├─ components/     # Panels, tables, print portal, UI kit (K–12 + Tertiary*)
 │  ├─ index.css       # Tailwind + print styles
 │  └─ main.jsx        # React entry
 ├─ index.html

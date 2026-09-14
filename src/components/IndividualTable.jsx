@@ -21,8 +21,8 @@ export default function IndividualTable({ teacherId, print = false, semester = '
   const teacher = state.teachers.find((t) => t.id === teacherId)
   const subjectsById = useMemo(() => Object.fromEntries(state.subjects.map((s) => [s.id, s])), [state.subjects])
 
-  // A teacher's grid is scoped to a semester so their 1st- and 2nd-term classes
-  // don't pile into one table. Blank pulls every part (all-year behavior).
+  // A teacher's grid is scoped to one term so their Term 1/2/3 classes don't pile
+  // into one table. Blank pulls every part (legacy all-year data).
   const rows = useMemo(() => canonicalTimeRows(state.schedules, semester), [state.schedules, semester])
   const ind = useMemo(
     () => buildIndividualSchedule(teacherId, state.schedules, rows, semester),

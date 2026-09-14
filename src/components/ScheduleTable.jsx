@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { useStore, effectiveTheme, DAYS, isBand, BAND_DEFAULT_LABEL, pickTextColor, formatTeacherName, formatTeacherShort, subjectCadence, cadenceLabel, isShsGrade, programForSemester, strandLabel, strandFullName, semesterLabel, bellForGrade, fridayOverrides } from '../store.jsx'
 
-export default function ScheduleTable({ schedule, print = false, semester = '', editable = false, onEditCell }) {
+export default function ScheduleTable({ schedule, print = false, semester = '', editable = false, onEditCell, conflictCells = null }) {
   const { state } = useStore()
   const theme = effectiveTheme(state)
   const showTeacher = state.settings.showTeacherInCell
@@ -24,11 +24,11 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
 
   const adviser = schedule.moderatorId ? teachersById[schedule.moderatorId] : null
 
-  // Senior High sections carry a separate program per semester; everything else
-  // has a single all-year grid. programForSemester resolves the right one (and
-  // safely falls back to the all-year grid for K–10, ignoring `semester`).
+  // Every K–12 section carries a separate program per term (Term 1/2/3).
+  // programForSemester resolves the active term's program for ALL grades — K–10
+  // simply repeats the same subjects each term. isShs stays only for strand meta.
   const isShs = isShsGrade(schedule.gradeLevel)
-  const prog = programForSemester(schedule, isShs ? semester : '')
+  const prog = programForSemester(schedule, semester)
   const timeSlots = prog.timeSlots || []
   const grid = prog.grid || {}
 
@@ -47,11 +47,12 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
 
   const border = `1px solid ${theme.border}`
   const metaBits = []
+  // Strand line stays Senior High only; the term line shows for every grade.
   if (isShs) {
     metaBits.push(schedule.strandId ? strandFullName(schedule.strandId) : 'Core (all strands)')
-    const semShort = semesterLabel(prog.semester || semester)
-    if (semShort) metaBits.push(semShort)
   }
+  const termShort = semesterLabel(prog.semester || semester)
+  if (termShort) metaBits.push(termShort)
   if (adviser) metaBits.push(`Adviser: ${formatTeacherName(adviser)}`)
 
   const baseFont = print ? '12px' : '11px'
@@ -205,17 +206,41 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
                   const fg = pickTextColor(bg)
                   const teacher = cell.teacherId ? teachersById[cell.teacherId] : null
                   const monthly = subj && subjectCadence(subj) === 'month'
+                  // Teacher clash: this exact cell (section + period + day) is one
+                  // side of a double-booking. Flagged with a red inset ring + a
+                  // solid pill so it reads on any subject color. Opt-in via the
+                  // conflictCells set (the live editing grid passes it; print does
+                  // not, so distributed copies stay clean).
+                  const conflicted = !!(conflictCells && conflictCells.has(`${schedule.id}||${slot.id}||${day}`))
                   return (
                     <td
                       key={day}
                       onClick={canEdit ? () => onEditCell(slot.id, day) : undefined}
-                      title={canEdit ? 'Click to change or remove' : undefined}
-                      style={{ background: bg, color: fg, border, padding: '5px 4px' }}
+                      title={
+                        conflicted
+                          ? 'Teacher conflict — this teacher is booked in another section at this time'
+                          : canEdit
+                          ? 'Click to change or remove'
+                          : undefined
+                      }
+                      style={{
+                        background: bg,
+                        color: fg,
+                        border,
+                        padding: '5px 4px',
+                        ...(conflicted ? { boxShadow: 'inset 0 0 0 3px #dc2626' } : null),
+                      }}
                       className={`text-center align-middle ${
                         canEdit ? 'cursor-pointer hover:ring-2 hover:ring-inset hover:ring-green-600' : ''
                       }`}
                     >
+                      {conflicted ? (
+                        <div className="mb-0.5 inline-flex items-center rounded bg-red-600 px-1 text-[8px] font-bold uppercase leading-tight tracking-wide text-white">
+                          ⚠ Conflict
+                        </div>
+                      ) : null}
                       <div className="font-bold uppercase leading-tight break-words">{subj ? subj.name : '—'}</div>
+
                       {monthly ? (
                         <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wide opacity-80">
                           {cadenceLabel(subj)}

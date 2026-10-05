@@ -101,11 +101,18 @@ export function minToTime(total) {
 // Recess after period 2 (15 min), Lunch after period 3 (45 min), Dismissal
 // 3:30–3:40. Each grade level can override this in the Schedule Times tab, and
 // the override is what the generator uses when building that grade's timetable.
+//
+// `periodMin` is the DEFAULT length used when a period has no explicit value;
+// `periodMins` holds the per-period lengths (one entry per period) so every
+// period can run for a different number of minutes. Old data that only has
+// `periodMin` is upgraded on read into a uniform `periodMins` array, so it stays
+// byte-identical — see normalizeBell.
 export const DEFAULT_BELL = {
   startTime: '8:10',
   homeroomMin: 20,
   periodMin: 60,
   periods: 6,
+  periodMins: [60, 60, 60, 60, 60, 60],
   recessAfter: 2,
   recessMin: 15,
   lunchAfter: 3,
@@ -139,12 +146,25 @@ export function normalizeBell(bell) {
   const time = (v, def) => (typeof v === 'string' && /\d/.test(v) ? v.trim() : def)
   const df = DEFAULT_BELL.friday
   const f = b.friday && typeof b.friday === 'object' ? b.friday : {}
+
+  const periods = int(b.periods, DEFAULT_BELL.periods, 1, 12)
+  const periodMin = int(b.periodMin, DEFAULT_BELL.periodMin, 20, 180)
+  // Per-period lengths — one entry per period, each independently editable.
+  // When `periodMins` is absent (old saved data) or shorter than `periods`, the
+  // missing entries fall back to the single `periodMin`, so a legacy uniform
+  // schedule normalizes to an identical array and the output stays byte-for-byte
+  // the same as before. Any extra entries beyond `periods` are dropped. Each
+  // length is clamped to the same 20–180 range as periodMin.
+  const srcMins = Array.isArray(b.periodMins) ? b.periodMins : []
+  const periodMins = Array.from({ length: periods }, (_, i) => int(srcMins[i], periodMin, 20, 180))
+
   return {
     startTime:
       typeof b.startTime === 'string' && /\d/.test(b.startTime) ? b.startTime.trim() : DEFAULT_BELL.startTime,
     homeroomMin: int(b.homeroomMin, DEFAULT_BELL.homeroomMin, 0, 120),
-    periodMin: int(b.periodMin, DEFAULT_BELL.periodMin, 20, 180),
-    periods: int(b.periods, DEFAULT_BELL.periods, 1, 12),
+    periodMin,
+    periods,
+    periodMins,
     recessAfter: int(b.recessAfter, DEFAULT_BELL.recessAfter, 0, 12),
     recessMin: int(b.recessMin, DEFAULT_BELL.recessMin, 0, 120),
     lunchAfter: int(b.lunchAfter, DEFAULT_BELL.lunchAfter, 0, 12),
@@ -170,8 +190,9 @@ export function bellForGrade(state, grade) {
 }
 
 // Build a consistent weekly timetable from a bell config: Homeroom first, then
-// `periods` fixed-length class periods repeated Mon–Fri, with a Recess after the
-// configured period and a Lunch after its configured period, then Dismissal.
+// `periods` class periods repeated Mon–Fri — each period as long as its own
+// entry in `periodMins` (so periods can differ in length) — with a Recess after
+// the configured period and a Lunch after its configured period, then Dismissal.
 // Because start times are position-based, two sections of the same grade always
 // share identical clock-time strings — which is what lets the auto-scheduler
 // stagger a shared teacher across sections without clashes. Zero-length bands
@@ -187,7 +208,9 @@ export function buildAutoTimeSlots(bell) {
 
   if (b.homeroomMin > 0) push('homeroom', BAND_DEFAULT_LABEL.homeroom, b.homeroomMin)
   for (let i = 1; i <= b.periods; i++) {
-    push('class', '', b.periodMin)
+    // Per-period length; normalizeBell guarantees periodMins has one entry per
+    // period, falling back to periodMin, so this index is always valid.
+    push('class', '', b.periodMins[i - 1])
     if (i === b.recessAfter && b.recessMin > 0) push('recess', BAND_DEFAULT_LABEL.recess, b.recessMin)
     if (i === b.lunchAfter && b.lunchMin > 0) push('lunch', BAND_DEFAULT_LABEL.lunch, b.lunchMin)
   }

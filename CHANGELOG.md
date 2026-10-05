@@ -5,6 +5,22 @@ All notable changes to TEACHERaiah are documented here. This project follows
 
 ## [2.0.0] — 2026-09-11
 
+### Added — Per-period schedule times
+
+The **Schedule Times** tab now lets each class period have its own length in
+minutes, instead of one length applied to the whole day.
+
+- **A minutes box for every period.** Set Period 1 to 60, Period 2 to 45, Period 3
+  to 30 — whatever each period needs. The start time of every later period, and of
+  Recess, Lunch and Dismissal, shifts to match, and the daily preview updates as you
+  type.
+- **"Apply to all" for a uniform day.** Type one length and apply it to every period
+  at once when they don't need to differ — the old single-length behavior, one click
+  away.
+- **Your existing times are kept exactly.** Grades set up before this release keep
+  their single period length on every period, so their generated timetables are
+  unchanged.
+
 ### Changed — DepEd trimester (three-term school calendar)
 
 Following **DepEd Order No. 009, s. 2026** (Three-Term School Calendar for Basic

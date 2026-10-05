@@ -53,6 +53,8 @@ export default function BellSchedulePanel() {
     return custom[0] || GRADE_LEVELS[0]
   })
   const [form, setForm] = useState(() => bellForGrade(state, grade))
+  // Local-only value backing the "set every period to…" quick-fill box.
+  const [bulkMin, setBulkMin] = useState('')
 
   // Reseed the editor whenever the selected grade changes. Switching grades
   // discards unsaved edits (expected — each grade is edited then saved).
@@ -81,6 +83,32 @@ export default function BellSchedulePanel() {
   const set = (key) => (val) => setForm((f) => ({ ...f, [key]: val }))
   // Update a nested Friday field, leaving the rest of the bell untouched.
   const setFri = (key) => (val) => setForm((f) => ({ ...f, friday: { ...(f.friday || {}), [key]: val } }))
+
+  // ---- Per-period lengths ----
+  // periodMins is a parallel array (one entry per class period). Each field
+  // keeps its own raw string so it can be cleared while typing — normalizeBell
+  // clamps on save. A period with no entry yet (e.g. one just added by raising
+  // the count) shows the default periodMin until it's edited.
+  const periodMinAt = (i) => {
+    const arr = form.periodMins
+    if (Array.isArray(arr) && i < arr.length && arr[i] != null) return arr[i]
+    return form.periodMin ?? ''
+  }
+  const setPeriodMin = (i) => (val) =>
+    setForm((f) => {
+      const arr = Array.isArray(f.periodMins) ? f.periodMins.slice() : []
+      arr[i] = val
+      return { ...f, periodMins: arr }
+    })
+  // Quick fill: set every period (and the default) to a single length.
+  const applyBulkMin = () => {
+    if (bulkMin === '' || !Number.isFinite(Number(bulkMin))) return
+    setForm((f) => ({
+      ...f,
+      periodMin: bulkMin,
+      periodMins: Array.from({ length: nb.periods }, () => bulkMin),
+    }))
+  }
 
   function save() {
     setBellSchedule(grade, nb)
@@ -171,14 +199,56 @@ export default function BellSchedulePanel() {
                 max={12}
                 suffix="periods"
               />
-              <NumberField
-                label="Period length"
-                value={form.periodMin}
-                onChange={set('periodMin')}
-                min={20}
-                max={180}
-                suffix="min"
-              />
+              <Field label="Set every period to" hint="Quick fill — then fine-tune any period below.">
+                <div className="flex items-center gap-2">
+                  <TextInput
+                    type="number"
+                    min={20}
+                    max={180}
+                    value={bulkMin}
+                    onChange={(e) => setBulkMin(e.target.value)}
+                    placeholder="60"
+                    className="max-w-[6rem]"
+                  />
+                  <span className="text-xs text-slate-500">min</span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={applyBulkMin}
+                    disabled={bulkMin === '' || !Number.isFinite(Number(bulkMin))}
+                  >
+                    Apply to all
+                  </Button>
+                </div>
+              </Field>
+            </div>
+
+            {/* Per-period lengths — a different number of minutes for every period. */}
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Period lengths
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Each class period can run for a different length. Changing one shifts the start
+                time of every period after it — the preview on the right updates live.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {Array.from({ length: nb.periods }, (_, i) => (
+                  <Field key={i} label={`Period ${i + 1}`}>
+                    <div className="flex items-center gap-2">
+                      <TextInput
+                        type="number"
+                        min={20}
+                        max={180}
+                        value={periodMinAt(i)}
+                        onChange={(e) => setPeriodMin(i)(e.target.value)}
+                        className="max-w-[6rem]"
+                      />
+                      <span className="text-xs text-slate-500">min</span>
+                    </div>
+                  </Field>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

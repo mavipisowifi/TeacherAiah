@@ -1,0 +1,98 @@
+TEACHERaiah
+TERMS OF SERVICE AND PRIVACY POLICY
+
+Effective date: October 5, 2026
+Developer: Marvin T. Bangcailan
+Project: https://github.com/mavipisowifi/TeacherAiah
+
+Please read this agreement carefully. By ticking the acceptance box and
+continuing with the installation, you confirm that you have read, understood,
+and agree to be bound by these Terms of Service and this Privacy Policy. If you
+do not agree, do not install or use the software.
+
+------------------------------------------------------------------------
+TERMS OF SERVICE
+------------------------------------------------------------------------
+
+1. ABOUT THE SOFTWARE
+   TEACHERaiah ("the Software") is a desktop application that helps teachers
+   and schools build and manage class schedules. It is provided free of charge
+   for educational use by teachers, schools, and administrators.
+
+2. LICENSE TO USE
+   You are granted a free, non-exclusive, non-transferable license to install
+   and use the Software on your own devices for lawful educational and
+   administrative purposes. You may share the unmodified installer with other
+   teachers and schools at no cost.
+
+3. RESTRICTIONS
+   You agree not to: (a) sell, rent, or charge a fee for the Software itself;
+   (b) misrepresent its origin or authorship; or (c) use the Software for any
+   unlawful purpose. The Software is distributed under the MIT License; where
+   this agreement and the MIT License differ regarding reuse of the source
+   code, the MIT License governs the source code.
+
+4. INTELLECTUAL PROPERTY
+   The TEACHERaiah name, logo, and design are the property of the developer.
+   All rights not expressly granted to you are reserved.
+
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY
+   KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. The
+   developer does not warrant that the Software will be error-free or that any
+   schedule it produces will be free of conflicts or suitable for your needs.
+   You are responsible for reviewing all generated schedules before use.
+
+6. LIMITATION OF LIABILITY
+   To the fullest extent permitted by law, the developer shall not be liable
+   for any loss of data, loss of profits, or any indirect, incidental, special,
+   or consequential damages arising out of or related to your use of, or
+   inability to use, the Software, even if advised of the possibility of such
+   damages.
+
+7. UPDATES
+   Future versions of the Software may add, change, or remove features. These
+   terms apply to each version you install unless a later version is
+   accompanied by updated terms.
+
+8. GOVERNING LAW
+   This agreement is governed by the laws of the Republic of the Philippines,
+   without regard to its conflict-of-laws rules.
+
+------------------------------------------------------------------------
+PRIVACY POLICY
+------------------------------------------------------------------------
+
+9. DATA STAYS ON YOUR DEVICE
+   TEACHERaiah runs entirely on your computer. All information you enter —
+   teachers, subjects, rooms, sections, schedules, and settings — is stored
+   locally on your device and in any backup files you choose to export. The
+   Software is designed to work fully offline.
+
+10. NO COLLECTION, NO TRACKING
+    The Software does not create accounts, does not require a login, and does
+    not send your data to the developer or to any server. It contains no
+    advertising, no analytics, and no usage tracking or telemetry. No personal
+    information is collected, transmitted, sold, or shared with third parties.
+
+11. YOUR CONTROL OVER YOUR DATA
+    You are in full control of your data. You may export it, back it up, or
+    erase it at any time from within the Software. Uninstalling the Software
+    and deleting your backup files removes your data. Because your data lives
+    only on your device, keeping your own backups is your responsibility; the
+    developer cannot recover data that is lost, corrupted, or deleted.
+
+12. CHANGES TO THIS POLICY
+    If this Privacy Policy changes in a future version, the updated policy will
+    be included with that version.
+
+------------------------------------------------------------------------
+CONTACT
+------------------------------------------------------------------------
+
+Questions about these terms or the Software can be raised through the project
+page at https://github.com/mavipisowifi/TeacherAiah.
+
+Thank you for using TEACHERaiah — and salamat sa inyong walang sawang
+paglilingkod.

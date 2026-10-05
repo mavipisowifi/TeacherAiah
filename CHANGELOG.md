@@ -3,7 +3,7 @@
 All notable changes to TEACHERaiah are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] — 2026-09-11
+## [2.1.0] — 2026-10-05
 
 ### Added — Per-period schedule times
 
@@ -20,6 +20,22 @@ minutes, instead of one length applied to the whole day.
 - **Your existing times are kept exactly.** Grades set up before this release keep
   their single period length on every period, so their generated timetables are
   unchanged.
+
+### Added — Terms of Service & Privacy agreement at install
+
+The Windows installer now shows a **Terms of Service and Privacy Policy** that
+must be accepted before TEACHERaiah is installed.
+
+- **Read-and-agree gate.** The installer displays the full terms with a checkbox —
+  "I have read and agree to the Terms of Service and Privacy Policy" — that must be
+  ticked before the Install button is enabled.
+- **Plain-language, offline-first policy.** The policy states what the app already
+  does: all your data stays on your device, with no accounts, no servers, and no
+  tracking or data collection.
+
+(Applies to the installer; the portable build has no install step.)
+
+## [2.0.0] — 2026-09-11
 
 ### Changed — DepEd trimester (three-term school calendar)
 

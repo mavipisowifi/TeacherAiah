@@ -1,6 +1,6 @@
 {
   "name": "teacheraiah",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "TEACHERaiah — an automated class schedule maker for teachers on every campus, from Kindergarten to Senior High and now colleges & universities. Build color-coded weekly class programs, auto-generate individual teacher and block-section schedules, detect conflicts, and export to PDF.",
   "author": "Marvin T. Bangcailan",
   "license": "MIT",
@@ -52,6 +52,8 @@
     },
     "nsis": {
       "oneClick": false,
+      "license": "build/eula.txt",
+      "include": "build/installer.nsh",
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "TEACHERaiah"

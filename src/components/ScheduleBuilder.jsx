@@ -12,6 +12,7 @@ import {
   usageCount,
   clampFreq,
   subjectCadence,
+  isAncillary,
   cadenceLabel,
   isShsGrade,
   strandLabel,
@@ -21,7 +22,7 @@ import {
   bellForGrade,
   fridayOverrides,
   SEMESTERS,
-  DAYS,
+  daysForBell,
 } from '../store.jsx'
 import { useUI } from '../appContext.jsx'
 import { Button, IconButton, Icon, Badge, Modal, Field, Select } from './ui.jsx'
@@ -105,6 +106,9 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
     if (!isGenerated) return 0
     let miss = 0
     for (const s of sectionSubjects) {
+      // Ancillary tasks are placed by hand, never auto-generated, so they must
+      // not count as "unfilled" on a freshly generated grid.
+      if (isAncillary(s)) continue
       // Monthly subjects reserve a single weekly slot (the generator uses
       // cells:1 for them), so they "want" 1 — not their per-week number, which
       // is meaningless for a monthly cadence. Weekly subjects want their clamped
@@ -134,6 +138,8 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
       }),
     [state.subjects, state.teachers, grade, rotation, schedule.strandId, activeSem]
   )
+  // The days this grade's week spans (5/6/7) — also limits the manual day-picker.
+  const weekDays = useMemo(() => daysForBell(bellForGrade(state, grade)), [state, grade])
   // Friday reserved rows (activity / early dismissal) for this program's times,
   // so the editor can lock the Friday column on exactly those rows.
   const fri = useMemo(
@@ -371,6 +377,7 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
           time={editSlot.time}
           currentCell={editCell}
           placeable={placeable}
+          weekDays={weekDays}
           teachers={state.teachers}
           friReserved={editFriReserved}
           onApply={applyCell}
@@ -413,7 +420,7 @@ export default function ScheduleBuilder({ scheduleId, onBack, onEditMeta }) {
    early dismissal. Freshly mounted per cell (keyed by the caller),
    so its form always starts from the clicked cell's contents.
    ============================================================ */
-function CellEditorModal({ open, onClose, grade, section, semLabel, day, time, currentCell, placeable, teachers, friReserved, onApply }) {
+function CellEditorModal({ open, onClose, grade, section, semLabel, day, time, currentCell, placeable, weekDays, teachers, friReserved, onApply }) {
   const byId = useMemo(() => {
     const m = {}
     for (const s of placeable) m[s.id] = s
@@ -433,12 +440,12 @@ function CellEditorModal({ open, onClose, grade, section, semLabel, day, time, c
   const [teacherId, setTeacherId] = useState(currentCell ? currentCell.teacherId || '' : '')
   const [days, setDays] = useState(() => {
     const d = {}
-    for (const x of DAYS) d[x] = x === day
+    for (const x of weekDays) d[x] = x === day
     return d
   })
 
   const sharers = sharersOf(subjectId)
-  const selectedDays = DAYS.filter((x) => days[x])
+  const selectedDays = weekDays.filter((x) => days[x])
   // A monthly subject reserves a single weekly period — the generator places it
   // in exactly one slot on one day, stamped e.g. "2×/mo". So when one is chosen
   // the day picker becomes single-choice: spreading a 2×/month subject across
@@ -450,10 +457,10 @@ function CellEditorModal({ open, onClose, grade, section, semLabel, day, time, c
   // subject is picked): keep the first day already chosen, else the cell's own
   // day. Never keeps a reserved Friday (which is locked anyway).
   function collapseToOneDay(d) {
-    const picked = DAYS.filter((x) => d[x] && !(x === 'FRI' && friReserved))
+    const picked = weekDays.filter((x) => d[x] && !(x === 'FRI' && friReserved))
     const keep = picked.length ? picked[0] : day
     const nd = {}
-    for (const x of DAYS) nd[x] = x === keep
+    for (const x of weekDays) nd[x] = x === keep
     return nd
   }
 
@@ -469,7 +476,7 @@ function CellEditorModal({ open, onClose, grade, section, semLabel, day, time, c
     if (monthly) {
       setDays(() => {
         const nd = {}
-        for (const y of DAYS) nd[y] = y === x
+        for (const y of weekDays) nd[y] = y === x
         return nd
       })
       return
@@ -560,7 +567,7 @@ function CellEditorModal({ open, onClose, grade, section, semLabel, day, time, c
             }
           >
             <div className="flex flex-wrap gap-1.5">
-              {DAYS.map((x) => {
+              {weekDays.map((x) => {
                 const locked = x === 'FRI' && friReserved
                 const on = days[x]
                 return (

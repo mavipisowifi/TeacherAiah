@@ -6,6 +6,7 @@ import {
   SUBJECT_PALETTE,
   clampFreq,
   clampMonthly,
+  isAncillary,
   cadenceLabel,
   pickTextColor,
   teachersForSubject,
@@ -31,6 +32,7 @@ const BLANK = {
   color: SUBJECT_PALETTE[0],
   strandId: '',
   semester: '',
+  kind: 'academic',
 }
 
 export default function SubjectsPanel() {
@@ -86,6 +88,7 @@ export default function SubjectsPanel() {
       color: s.color || SUBJECT_PALETTE[0],
       strandId: s.strandId || '',
       semester: s.semester === '1' || s.semester === '2' || s.semester === '3' ? s.semester : '',
+      kind: s.kind === 'ancillary' ? 'ancillary' : 'academic',
     })
     setError('')
     setModalOpen(true)
@@ -104,6 +107,7 @@ export default function SubjectsPanel() {
     if (dup) return setError(`${form.gradeLevel} already has a subject named "${name}".`)
 
     const shs = isShsGrade(form.gradeLevel)
+    const ancillary = form.kind === 'ancillary'
     const validTerm = form.semester === '1' || form.semester === '2' || form.semester === '3'
     const payload = {
       name,
@@ -113,9 +117,11 @@ export default function SubjectsPanel() {
       periodsPerWeek: clampFreq(form.periodsPerWeek),
       sessionsPerMonth: clampMonthly(form.sessionsPerMonth),
       color: form.color,
-      // Strand is Senior High only; the term applies to every grade (blank runs
-      // in all three terms, so existing subjects keep repeating each term).
-      strandId: shs ? form.strandId || '' : '',
+      kind: ancillary ? 'ancillary' : 'academic',
+      // Strand is Senior High only AND never applies to an ancillary task; the
+      // term applies to every grade (blank runs in all three terms, so existing
+      // subjects keep repeating each term).
+      strandId: shs && !ancillary ? form.strandId || '' : '',
       semester: validTerm ? form.semester : '',
     }
     if (editing) {
@@ -296,10 +302,12 @@ export default function SubjectsPanel() {
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <span
-                            className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500"
-                            title="How often it meets"
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                              isAncillary(s) ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                            }`}
+                            title={isAncillary(s) ? 'Ancillary task (teaching load)' : 'How often it meets'}
                           >
-                            {cadenceLabel(s)}
+                            {isAncillary(s) ? 'Ancillary' : cadenceLabel(s)}
                           </span>
                           <IconButton icon="edit" title="Edit subject" onClick={() => openEdit(s)} />
                           <IconButton icon="trash" title="Delete subject" variant="danger" onClick={() => remove(s)} />
@@ -344,6 +352,12 @@ export default function SubjectsPanel() {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
+            <Field label="Type" hint="Ancillary tasks (coaching, ICT coordinator, journalism…) are a teaching load.">
+              <Select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+                <option value="academic">Academic subject</option>
+                <option value="ancillary">Ancillary task</option>
+              </Select>
+            </Field>
             <Field label="Grade level" required>
               <Select value={form.gradeLevel} onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}>
                 {gradeOptionGroups().map((grp) => (
@@ -355,49 +369,51 @@ export default function SubjectsPanel() {
                 ))}
               </Select>
             </Field>
-            <Field
-              label="How often it meets"
-              hint={
-                form.cadence === 'month'
-                  ? 'Placed in a free slot and marked (e.g. 2×/mo). It can land on any day.'
-                  : 'Days a week this subject meets. The rest of the week is left free as rest time.'
-              }
-            >
-              <div className="flex gap-2">
-                <Select
-                  value={form.cadence}
-                  onChange={(e) => setForm({ ...form, cadence: e.target.value })}
-                  className="max-w-[8.5rem] shrink-0"
-                >
-                  <option value="week">Per week</option>
-                  <option value="month">Per month</option>
-                </Select>
-                {form.cadence === 'month' ? (
-                  <Select
-                    value={String(form.sessionsPerMonth)}
-                    onChange={(e) => setForm({ ...form, sessionsPerMonth: Number(e.target.value) })}
-                  >
-                    {[1, 2, 3, 4].map((n) => (
-                      <option key={n} value={n}>{n} {n === 1 ? 'time' : 'times'} / month</option>
-                    ))}
-                  </Select>
-                ) : (
-                  <Select
-                    value={String(form.periodsPerWeek)}
-                    onChange={(e) => setForm({ ...form, periodsPerWeek: Number(e.target.value) })}
-                  >
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>{n} {n === 1 ? 'day' : 'days'} / week</option>
-                    ))}
-                  </Select>
-                )}
-              </div>
-            </Field>
           </div>
+          <Field
+            label="How often it meets"
+            hint={
+              form.kind === 'ancillary'
+                ? 'Ancillary tasks are placed into the schedule by hand (not auto-generated) and count toward the teacher’s load.'
+                : form.cadence === 'month'
+                ? 'Placed in a free slot and marked (e.g. 2×/mo). It can land on any day.'
+                : 'Days a week this subject meets (up to 7 — 6 = Mon–Sat). The rest of the week is left free as rest time.'
+            }
+          >
+            <div className="flex gap-2">
+              <Select
+                value={form.cadence}
+                onChange={(e) => setForm({ ...form, cadence: e.target.value })}
+                className="max-w-[8.5rem] shrink-0"
+              >
+                <option value="week">Per week</option>
+                <option value="month">Per month</option>
+              </Select>
+              {form.cadence === 'month' ? (
+                <Select
+                  value={String(form.sessionsPerMonth)}
+                  onChange={(e) => setForm({ ...form, sessionsPerMonth: Number(e.target.value) })}
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>{n} {n === 1 ? 'time' : 'times'} / month</option>
+                  ))}
+                </Select>
+              ) : (
+                <Select
+                  value={String(form.periodsPerWeek)}
+                  onChange={(e) => setForm({ ...form, periodsPerWeek: Number(e.target.value) })}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                    <option key={n} value={n}>{n} {n === 1 ? 'day' : 'days'} / week</option>
+                  ))}
+                </Select>
+              )}
+            </div>
+          </Field>
           {/* Term applies to every grade (blank = all three terms). Strand is
               Senior High only, shown alongside Term for SHS grades. */}
           <div className="grid grid-cols-2 gap-4">
-            {isShsGrade(form.gradeLevel) && (
+            {isShsGrade(form.gradeLevel) && form.kind !== 'ancillary' && (
               <Field
                 label="Strand"
                 hint="Core, Applied and Elective are taken by every strand; a specific strand limits it to that section."

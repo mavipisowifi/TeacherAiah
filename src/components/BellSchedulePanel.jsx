@@ -170,6 +170,18 @@ export default function BellSchedulePanel() {
             </p>
           </div>
           <div className="space-y-4 p-4">
+            <Field label="Days per week" hint="Mon–Fri by default. Choose 6 to add Saturday, or 7 to add Sunday, to this grade’s schedule.">
+              <Select
+                value={String(nb.daysPerWeek)}
+                onChange={(e) => set('daysPerWeek')(e.target.value)}
+                className="max-w-[18rem]"
+              >
+                <option value="5">5 days — Monday to Friday</option>
+                <option value="6">6 days — Monday to Saturday</option>
+                <option value="7">7 days — Monday to Sunday</option>
+              </Select>
+            </Field>
+
             <div className="grid grid-cols-2 gap-4">
               <Field label="Start time" hint="When Homeroom (or the first period) begins.">
                 <TextInput

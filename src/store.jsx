@@ -11,7 +11,33 @@ import {
    Constants
    ============================================================ */
 
-export const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI']
+// The school week. Weekdays are always present; Saturday and Sunday were added
+// (2026-10-06) so a subject can meet up to 7 days/week (6 = Mon–Sat). Render code
+// shows a weekend COLUMN only when something is actually scheduled on it (see
+// CORE_DAYS / WEEKEND_DAYS + the tables), so a Mon–Fri school looks and prints
+// exactly as before. All scheduling/conflict logic iterates DAYS, so it handles
+// the longer week automatically.
+export const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+export const CORE_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI']
+export const WEEKEND_DAYS = ['SAT', 'SUN']
+
+// Build a fresh per-day object keyed by every day in DAYS. Pass a factory so each
+// day gets its OWN value (important for arrays/objects — never a shared ref).
+export function dayMap(make) {
+  const o = {}
+  for (const d of DAYS) o[d] = make()
+  return o
+}
+
+// The days a grade's week actually spans, from its bell's daysPerWeek: 5 = Mon–Fri
+// (the default), 6 = Mon–Sat, 7 = Mon–Sun. The auto-scheduler only ever places on
+// these days and the section table shows exactly these columns, so a grade stays a
+// plain Mon–Fri week unless the user opts into 6 or 7 in Schedule Times.
+export function daysForBell(bell) {
+  let n = Math.round(Number(bell && bell.daysPerWeek))
+  if (!Number.isFinite(n)) n = 5
+  return DAYS.slice(0, Math.max(5, Math.min(7, n)))
+}
 
 // Full DepEd K–12 range so TEACHERaiah serves every campus — Kindergarten and
 // elementary through Junior and Senior High School.
@@ -113,6 +139,7 @@ export const DEFAULT_BELL = {
   periodMin: 60,
   periods: 6,
   periodMins: [60, 60, 60, 60, 60, 60],
+  daysPerWeek: 5,
   recessAfter: 2,
   recessMin: 15,
   lunchAfter: 3,
@@ -165,6 +192,10 @@ export function normalizeBell(bell) {
     periodMin,
     periods,
     periodMins,
+    // Length of the school week for this grade: 5 (Mon–Fri, default), 6 (Mon–Sat)
+    // or 7 (Mon–Sun). Absent/old data defaults to 5, so every existing grade stays
+    // a weekday-only week until the user opts in.
+    daysPerWeek: int(b.daysPerWeek, 5, 5, 7),
     recessAfter: int(b.recessAfter, DEFAULT_BELL.recessAfter, 0, 12),
     recessMin: int(b.recessMin, DEFAULT_BELL.recessMin, 0, 120),
     lunchAfter: int(b.lunchAfter, DEFAULT_BELL.lunchAfter, 0, 12),
@@ -403,11 +434,12 @@ export function parseTimeRange(time) {
   return { start, end }
 }
 
-// Clamp a subject's sessions-per-week to the supported 1–5 range (default 4).
+// Clamp a subject's days-per-week to the supported 1–7 range (default 4). The
+// week runs Mon–Sun, so a subject can meet up to 7 days (6 = Mon–Sat).
 export function clampFreq(n) {
   let v = Math.round(Number(n))
   if (!Number.isFinite(v)) v = 4
-  return Math.max(1, Math.min(5, v))
+  return Math.max(1, Math.min(7, v))
 }
 
 // Clamp a monthly subject's sessions-per-month to the supported 1–4 range
@@ -416,6 +448,20 @@ export function clampMonthly(n) {
   let v = Math.round(Number(n))
   if (!Number.isFinite(v)) v = 2
   return Math.max(1, Math.min(4, v))
+}
+
+// Subject kind: 'academic' (default) or 'ancillary'. An ANCILLARY task (coaching,
+// ICT coordinator, journalism, SPG adviser, …) is a teacher's load rather than a
+// class subject: it is NEVER auto-generated and never blocks the strict
+// "every subject needs a teacher" gate. Instead the user places it by hand into
+// the schedule, where it occupies the teacher's time, counts toward their load,
+// and is conflict-checked like any class. Any unknown/absent value reads as
+// 'academic', so every existing subject is unaffected.
+export function normSubjectKind(v) {
+  return v === 'ancillary' ? 'ancillary' : 'academic'
+}
+export function isAncillary(s) {
+  return !!s && s.kind === 'ancillary'
 }
 
 // A subject's cadence: 'month' for subjects that meet only a few times per
@@ -882,9 +928,11 @@ export function teachersForSubject(teachers, subjectId) {
 
 // The subjects of a grade that no teacher teaches yet. Drives the strict
 // "every subject needs a teacher" gate before a section can be generated.
+// Ancillary tasks are excluded — they are hand-placed, not auto-generated, so a
+// teacher-less ancillary task never blocks a section's academic generation.
 export function subjectsMissingTeacher(subjects, teachers, gradeLevel) {
   return subjectsForGrade(subjects, gradeLevel).filter(
-    (s) => teachersForSubject(teachers, s.id).length === 0
+    (s) => !isAncillary(s) && teachersForSubject(teachers, s.id).length === 0
   )
 }
 
@@ -941,7 +989,7 @@ export function subjectsForSection(subjects, teachers, gradeLevel, rotationIndex
 // equals subjectsMissingTeacher for the whole grade.
 export function subjectsMissingTeacherForClass(subjects, teachers, gradeLevel, strandId = '', semester = '') {
   return subjectsForClass(subjects, gradeLevel, strandId, semester).filter(
-    (s) => teachersForSubject(teachers, s.id).length === 0
+    (s) => !isAncillary(s) && teachersForSubject(teachers, s.id).length === 0
   )
 }
 
@@ -986,10 +1034,16 @@ export function autoScheduleGrid({ gradeSubjects, subjects: subjectsArg, otherSc
     : Array.isArray(gradeSubjects)
     ? gradeSubjects
     : []
+  // Ancillary tasks (coaching, ICT coordinator, …) are a teacher load placed by
+  // hand, so the auto-generator never seats them; everything else schedules.
+  const schedulable = subjects.filter((s) => !isAncillary(s))
   const timeSlots = buildAutoTimeSlots(bell)
   const classSlots = timeSlots.filter((s) => s.kind === 'class')
   const P = classSlots.length
   const slotRange = classSlots.map((s) => parseTimeRange(s.time))
+  // Only the days this grade's week spans (5 = Mon–Fri default, 6 = +Sat, 7 = +Sun).
+  // Nothing is ever auto-placed on a weekend the grade hasn't enabled.
+  const weekDays = daysForBell(bell)
   // Normalize the offset into [0, P) so callers can pass any section index.
   const rot = P > 0 ? ((Math.trunc(rotation) % P) + P) % P : 0
 
@@ -997,7 +1051,7 @@ export function autoScheduleGrid({ gradeSubjects, subjects: subjectsArg, otherSc
   // extended as we place cells in this section.
   const busy = new Map() // teacherId -> { MON: [[s,e],...], ... }
   const ensure = (tid) => {
-    if (!busy.has(tid)) busy.set(tid, { MON: [], TUE: [], WED: [], THU: [], FRI: [] })
+    if (!busy.has(tid)) busy.set(tid, dayMap(() => []))
     return busy.get(tid)
   }
   const overlaps = (a, s, e) => a[0] < e && s < a[1]
@@ -1036,8 +1090,8 @@ export function autoScheduleGrid({ gradeSubjects, subjects: subjectsArg, otherSc
 
   // Empty grid + per-cell occupancy for this section.
   const grid = {}
-  const filled = classSlots.map(() => ({ MON: false, TUE: false, WED: false, THU: false, FRI: false }))
-  for (const slot of classSlots) grid[slot.id] = { MON: null, TUE: null, WED: null, THU: null, FRI: null }
+  const filled = classSlots.map(() => dayMap(() => false))
+  for (const slot of classSlots) grid[slot.id] = dayMap(() => null)
 
   // Optional per-grade FRIDAY blocks: the activity period and any slot at/after
   // early dismissal are marked occupied on Friday only, so no class is ever
@@ -1057,19 +1111,19 @@ export function autoScheduleGrid({ gradeSubjects, subjects: subjectsArg, otherSc
   // printed cell is stamped e.g. "2×/mo" so the real cadence is honest). Ties
   // break by creation order, then original index, for deterministic output
   // regardless of subject list order.
-  const order = subjects
+  const order = schedulable
     .map((s, idx) => {
       const monthly = subjectCadence(s) === 'month'
       return {
         s,
         idx,
         monthly,
-        // Weekly subjects occupy `periodsPerWeek` cells; a monthly subject always
-        // reserves a single weekly slot regardless of its sessions-per-month.
-        cells: monthly ? 1 : clampFreq(s.periodsPerWeek),
-        // Sort weight: weekly subjects rank by their weekly frequency; monthly
-        // ones all sit below every weekly subject so they backfill last.
-        weight: monthly ? 0 : clampFreq(s.periodsPerWeek),
+        // Weekly subjects occupy `periodsPerWeek` cells, but never more days than
+        // the grade's week has; a monthly subject always reserves a single slot.
+        cells: monthly ? 1 : Math.min(clampFreq(s.periodsPerWeek), weekDays.length),
+        // Sort weight: weekly subjects rank by their (capped) weekly frequency;
+        // monthly ones sit below every weekly subject so they backfill last.
+        weight: monthly ? 0 : Math.min(clampFreq(s.periodsPerWeek), weekDays.length),
       }
     })
     .sort(
@@ -1104,7 +1158,7 @@ export function autoScheduleGrid({ gradeSubjects, subjects: subjectsArg, otherSc
     let seatedDays = null
     for (let k = 0; k < P; k++) {
       const pi = (rot + k) % P
-      const days = DAYS.filter((day) => !filled[pi][day] && isFree(tid, day, slotRange[pi]))
+      const days = weekDays.filter((day) => !filled[pi][day] && isFree(tid, day, slotRange[pi]))
       if (days.length >= cells) {
         seatedRow = pi
         seatedDays = days.slice(0, cells)
@@ -1121,7 +1175,7 @@ export function autoScheduleGrid({ gradeSubjects, subjects: subjectsArg, otherSc
     let need = cells
     for (let k = 0; k < P && need > 0; k++) {
       const pi = (rot + k) % P
-      for (const day of DAYS) {
+      for (const day of weekDays) {
         if (need === 0) break
         if (filled[pi][day] || !isFree(tid, day, slotRange[pi])) continue
         placeCell(pi, day, s)
@@ -1131,7 +1185,7 @@ export function autoScheduleGrid({ gradeSubjects, subjects: subjectsArg, otherSc
     unplaced += need
   }
 
-  return { timeSlots, grid, placed, requested, unplaced, total: subjects.length }
+  return { timeSlots, grid, placed, requested, unplaced, total: schedulable.length }
 }
 
 // Human-readable label for a Grade Level Room.
@@ -1169,7 +1223,7 @@ const EMPTY_STATE = {
 function emptyGrid(timeSlots) {
   const g = {}
   for (const s of timeSlots) {
-    if (s.kind === 'class') g[s.id] = { MON: null, TUE: null, WED: null, THU: null, FRI: null }
+    if (s.kind === 'class') g[s.id] = dayMap(() => null)
   }
   return g
 }
@@ -1178,7 +1232,7 @@ function reconcileGrid(oldGrid, timeSlots) {
   const g = {}
   for (const s of timeSlots) {
     if (s.kind !== 'class') continue
-    g[s.id] = (oldGrid && oldGrid[s.id]) || { MON: null, TUE: null, WED: null, THU: null, FRI: null }
+    g[s.id] = (oldGrid && oldGrid[s.id]) || dayMap(() => null)
   }
   return g
 }
@@ -1335,6 +1389,7 @@ export function normalizeState(raw) {
         sessionsPerMonth: clampMonthly(rest.sessionsPerMonth),
         strandId: rest.strandId || '',
         semester: rest.semester === '1' || rest.semester === '2' || rest.semester === '3' ? rest.semester : '',
+        kind: normSubjectKind(rest.kind),
       }
     }),
     // v6 → v7 (trimester): every section carries three independent term programs.
@@ -1699,7 +1754,7 @@ export function reducer(state, action) {
           if (s.id !== action.scheduleId) return s
           return writeScheduleGrid(s, action.semester, (grid) => {
             const g = { ...grid }
-            const row = { ...(g[action.slotId] || { MON: null, TUE: null, WED: null, THU: null, FRI: null }) }
+            const row = { ...(g[action.slotId] || dayMap(() => null)) }
             row[action.day] = action.value
             g[action.slotId] = row
             return g
@@ -1713,7 +1768,7 @@ export function reducer(state, action) {
           if (s.id !== action.scheduleId) return s
           return writeScheduleGrid(s, action.semester, (grid) => {
             const g = { ...grid }
-            const row = { ...(g[action.slotId] || { MON: null, TUE: null, WED: null, THU: null, FRI: null }) }
+            const row = { ...(g[action.slotId] || dayMap(() => null)) }
             for (const day of action.days) row[day] = action.value
             g[action.slotId] = row
             return g
@@ -2016,6 +2071,7 @@ export function StoreProvider({ children }) {
           sessionsPerMonth: clampMonthly(data && data.sessionsPerMonth),
           strandId: (data && data.strandId) || '',
           semester: data && (data.semester === '1' || data.semester === '2' || data.semester === '3') ? data.semester : '',
+          kind: normSubjectKind(data && data.kind),
         }
         dispatch({ type: 'ADD_SUBJECT', payload: subject })
         return subject

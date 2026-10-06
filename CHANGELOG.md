@@ -3,7 +3,33 @@
 All notable changes to TEACHERaiah are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
-## [2.1.0] — 2026-10-05
+## [2.1.0] — 2026-10-06
+
+### Added — Six- and seven-day weeks (opt-in per grade)
+
+Schools that hold Saturday (or Sunday) classes can extend a grade's week.
+
+- **The default stays Monday–Friday.** Every grade is a 5-day week unless you change
+  it, so existing schedules are untouched and nothing is ever placed on a weekend by
+  default.
+- **Enable 6 or 7 days per grade.** In **Schedule Times**, set a grade's "Days per
+  week" to 6 (adds Saturday) or 7 (adds Sunday). That grade's schedule table then
+  shows the extra column(s) and the generator may use them.
+- **Up to 7 days/week per subject.** A subject's "How often it meets" now goes up to
+  7 days, capped by its grade's week — so a 6-day subject fills Monday–Saturday in a
+  6-day grade, conflict-free, while a 5-day grade keeps everything on weekdays.
+
+### Added — Ancillary tasks (teaching load)
+
+You can now record ancillary tasks — coaching, ICT coordinator, journalism, and the
+like — as part of a teacher's load.
+
+- **A new subject type.** When adding a subject, pick **Ancillary task** instead of
+  Academic subject, and link a teacher to it as usual.
+- **Counts toward the teacher's load.** Place it into the schedule by hand where the
+  teacher performs it; it then shows in that teacher's program, counts toward their
+  load, and is checked for clashes. Ancillary tasks are not auto-generated across
+  sections, so each stays a single, deliberate assignment.
 
 ### Added — Per-period schedule times
 

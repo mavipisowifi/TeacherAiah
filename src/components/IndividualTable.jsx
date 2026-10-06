@@ -3,6 +3,8 @@ import {
   useStore,
   effectiveTheme,
   DAYS,
+  CORE_DAYS,
+  WEEKEND_DAYS,
   canonicalTimeRows,
   buildIndividualSchedule,
   isBand,
@@ -11,6 +13,7 @@ import {
   formatTeacherName,
   subjectCadence,
   cadenceLabel,
+  isAncillary,
   semesterLabel,
 } from '../store.jsx'
 
@@ -29,6 +32,13 @@ export default function IndividualTable({ teacherId, print = false, semester = '
     [teacherId, state.schedules, rows, semester]
   )
 
+  // Weekdays always show; a weekend column appears only when this teacher has a
+  // class on it, so a Mon–Fri teacher's program is unchanged.
+  const cols = useMemo(() => {
+    const used = (d) => ind.rows.some((r) => r.kind === 'class' && Array.isArray(r.days[d]) && r.days[d].length)
+    return [...CORE_DAYS, ...WEEKEND_DAYS.filter(used)]
+  }, [ind])
+
   if (!teacher) return null
 
   const border = `1px solid ${theme.border}`
@@ -45,14 +55,14 @@ export default function IndividualTable({ teacherId, print = false, semester = '
       <table className="w-full border-collapse" style={{ tableLayout: 'fixed', border, background: '#fff' }}>
         <colgroup>
           <col style={{ width: '12%' }} />
-          {DAYS.map((d) => (
-            <col key={d} style={{ width: '17.6%' }} />
+          {cols.map((d) => (
+            <col key={d} style={{ width: `${(88 / cols.length).toFixed(2)}%` }} />
           ))}
         </colgroup>
         <thead>
           <tr>
             <th
-              colSpan={6}
+              colSpan={cols.length + 1}
               style={{ background: theme.title, color: theme.onDark, border, padding: '7px 8px', fontSize: print ? '16px' : '14px' }}
               className="text-center font-extrabold uppercase"
             >
@@ -61,7 +71,7 @@ export default function IndividualTable({ teacherId, print = false, semester = '
           </tr>
           <tr>
             <th
-              colSpan={6}
+              colSpan={cols.length + 1}
               style={{ background: theme.section, color: theme.onDark, border, padding: '4px 8px' }}
               className="text-center text-xs font-semibold"
             >
@@ -69,7 +79,7 @@ export default function IndividualTable({ teacherId, print = false, semester = '
             </th>
           </tr>
           <tr>
-            {['TIME', ...DAYS].map((h) => (
+            {['TIME', ...cols].map((h) => (
               <th
                 key={h}
                 style={{ background: theme.header, color: theme.onDark, border, padding: '5px 4px' }}
@@ -97,7 +107,7 @@ export default function IndividualTable({ teacherId, print = false, semester = '
               return (
                 <tr key={ri}>
                   {timeCell}
-                  {DAYS.map((day) => (
+                  {cols.map((day) => (
                     <td
                       key={day}
                       style={{ background: theme.band, color: theme.onBand, border, padding: '5px 8px' }}
@@ -116,7 +126,7 @@ export default function IndividualTable({ teacherId, print = false, semester = '
               return (
                 <tr key={ri}>
                   {timeCell}
-                  {DAYS.map((day) => (
+                  {cols.map((day) => (
                     <td
                       key={day}
                       style={{ background: theme.band, color: theme.onBand, border, padding: '5px 8px' }}
@@ -133,7 +143,7 @@ export default function IndividualTable({ teacherId, print = false, semester = '
             return (
               <tr key={ri}>
                 {timeCell}
-                {DAYS.map((day) => {
+                {cols.map((day) => {
                   const hits = r.days[day]
                   if (!hits || hits.length === 0) {
                     return <td key={day} style={{ background: theme.emptyCell, border, padding: '5px 4px' }} />
@@ -147,6 +157,9 @@ export default function IndividualTable({ teacherId, print = false, semester = '
                     return (
                       <td key={day} style={{ background: bg, color: fg, border, padding: '5px 4px' }} className="text-center align-middle">
                         <div className="font-bold uppercase leading-tight">{subj ? subj.name : '—'}</div>
+                        {subj && isAncillary(subj) ? (
+                          <div className="inline-block rounded bg-black/20 px-1 text-[8px] font-bold uppercase tracking-wide">Ancillary</div>
+                        ) : null}
                         {monthly ? (
                           <div className="text-[9px] font-bold uppercase tracking-wide opacity-80">{cadenceLabel(subj)}</div>
                         ) : null}

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { useStore, effectiveTheme, DAYS, isBand, BAND_DEFAULT_LABEL, pickTextColor, formatTeacherName, formatTeacherShort, subjectCadence, cadenceLabel, isShsGrade, programForSemester, strandLabel, strandFullName, semesterLabel, bellForGrade, fridayOverrides } from '../store.jsx'
+import { useStore, effectiveTheme, DAYS, CORE_DAYS, WEEKEND_DAYS, isBand, BAND_DEFAULT_LABEL, pickTextColor, formatTeacherName, formatTeacherShort, subjectCadence, cadenceLabel, isAncillary, isShsGrade, programForSemester, strandLabel, strandFullName, semesterLabel, bellForGrade, daysForBell, fridayOverrides } from '../store.jsx'
 
 export default function ScheduleTable({ schedule, print = false, semester = '', editable = false, onEditCell, conflictCells = null }) {
   const { state } = useStore()
@@ -31,6 +31,12 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
   const prog = programForSemester(schedule, semester)
   const timeSlots = prog.timeSlots || []
   const grid = prog.grid || {}
+
+  // Columns shown = exactly the days this grade's week spans (5 = Mon–Fri default,
+  // 6 = +Sat, 7 = +Sun), from its bell. A 5-day grade looks and prints exactly as
+  // before; 6/7 reveal the weekend column(s). Since the generator only places on
+  // these days, the extra columns are the ones the user opted into.
+  const cols = useMemo(() => daysForBell(bellForGrade(state, schedule.gradeLevel)), [state, schedule.gradeLevel])
 
   // Optional per-grade FRIDAY tweaks: a no-class activity block and/or an early
   // dismissal. Resolved against this program's own time rows, so the right cells
@@ -65,17 +71,15 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
       >
         <colgroup>
           <col style={{ width: '12%' }} />
-          <col style={{ width: '17.6%' }} />
-          <col style={{ width: '17.6%' }} />
-          <col style={{ width: '17.6%' }} />
-          <col style={{ width: '17.6%' }} />
-          <col style={{ width: '17.6%' }} />
+          {cols.map((d) => (
+            <col key={d} style={{ width: `${(88 / cols.length).toFixed(2)}%` }} />
+          ))}
         </colgroup>
         <thead>
           {/* Grade title bar */}
           <tr>
             <th
-              colSpan={6}
+              colSpan={cols.length + 1}
               style={{ background: theme.title, color: theme.onDark, border, padding: '7px 8px', fontSize: print ? '17px' : '15px', letterSpacing: '0.03em' }}
               className="text-center font-extrabold uppercase"
             >
@@ -85,7 +89,7 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
           {/* Section bar */}
           <tr>
             <th
-              colSpan={6}
+              colSpan={cols.length + 1}
               style={{ background: theme.section, color: theme.onDark, border, padding: '5px 8px', fontSize: print ? '14px' : '13px', letterSpacing: '0.05em' }}
               className="text-center font-bold uppercase"
             >
@@ -96,7 +100,7 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
           {metaBits.length > 0 && (
             <tr>
               <td
-                colSpan={6}
+                colSpan={cols.length + 1}
                 style={{ background: theme.band, color: theme.onBand, border, padding: '3px 8px' }}
                 className="text-center text-[11px] font-medium"
               >
@@ -106,7 +110,7 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
           )}
           {/* Day header */}
           <tr>
-            {['TIME', ...DAYS].map((h) => (
+            {['TIME', ...cols].map((h) => (
               <th
                 key={h}
                 style={{ background: theme.header, color: theme.onDark, border, padding: '5px 4px' }}
@@ -134,7 +138,7 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
               return (
                 <tr key={slot.id}>
                   {timeCell}
-                  {DAYS.map((day) => (
+                  {cols.map((day) => (
                     <td
                       key={day}
                       style={{ background: theme.band, color: theme.onBand, border, padding: '5px 8px' }}
@@ -151,7 +155,7 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
             return (
               <tr key={slot.id}>
                 {timeCell}
-                {DAYS.map((day) => {
+                {cols.map((day) => {
                   const cell = row[day]
                   // Friday-only activity block / early dismissal. Only when the
                   // grade opted in and no class occupies the cell (a stale class
@@ -241,6 +245,11 @@ export default function ScheduleTable({ schedule, print = false, semester = '', 
                       ) : null}
                       <div className="font-bold uppercase leading-tight break-words">{subj ? subj.name : '—'}</div>
 
+                      {subj && isAncillary(subj) ? (
+                        <div className="mt-0.5 inline-block rounded bg-black/20 px-1 text-[8px] font-bold uppercase tracking-wide">
+                          Ancillary
+                        </div>
+                      ) : null}
                       {monthly ? (
                         <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wide opacity-80">
                           {cadenceLabel(subj)}
